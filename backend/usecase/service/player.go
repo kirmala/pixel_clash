@@ -19,3 +19,9 @@ func (u *Player) Post(player model.Player) error {
 	return u.Repo.Post(player)
 }
 
+func (u *Player) Get(id string) (*model.Player, error) {
+	return u.Repo.Get(id)
+}
+
+
+

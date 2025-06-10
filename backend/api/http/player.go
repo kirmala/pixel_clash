@@ -20,9 +20,9 @@ func NewPlayerHandler(playerService usecase.Player, gameService usecase.Game) *P
 	return &Player{service: playerService, gameService: gameService}
 }
 
-// @Summary user joins game
-// @Description user joins game
-// @Tags user
+// @Summary player joins game
+// @Description player joins game
+// @Tags player
 // @Accept  json
 // @Param name body types.PostPlayerJoinHandlerRequest true "user name, desired capacity"
 // @Router /player/join [post]
@@ -38,14 +38,43 @@ func (u *Player) joinHandler(w http.ResponseWriter, r *http.Request) {
 	
 	err = u.service.Post(player)
 
-	var gameId string
-	gameId, player.Status = u.gameService.Find(player)
+	u.gameService.Find(player)
 
-	types.ProcessError(w, err, &types.PostPlayerJoinHandlerResponse{Status : player.Status, GameId : gameId}, 200)
+	updatedPlayer, _ := u.service.Get(player.Id)
+
+	types.ProcessError(w, err, &types.PostPlayerJoinHandlerResponse{Status : updatedPlayer.Status, GameId : updatedPlayer.GameId, PlayerId: updatedPlayer.Id}, 200)
+}
+
+// @Summary sends status info
+// @Description sends status info
+// @Tags player
+// @Accept  json
+// @Param name body types.PostPlayerStatusHandlerRequest true "user id"
+// @Router /player/status [post]
+func (u *Player) statusHandler(w http.ResponseWriter, r *http.Request) {
+	req, err := types.CreatePostPlayerStatusHandlerRequest(r)
+
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	player, err := u.service.Get(req.Id)
+
+	var status string
+
+	if err != nil {
+		status = "unauthorized"
+	} else {
+		status = player.Status
+	}
+
+	types.ProcessError(w, err, &types.PostPlayerStatusHandlerResponse{Status : status}, 200)
 }
 
 func (u *Player) WithPlayerHandlers(r chi.Router) {
 	r.Route("/player", func(r chi.Router) {
 		r.Post("/join", u.joinHandler)
+		r.Post("/status", u.statusHandler)
 	})
 }

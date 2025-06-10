@@ -17,14 +17,14 @@ const docTemplate = `{
     "paths": {
         "/player/join": {
             "post": {
-                "description": "user joins game",
+                "description": "player joins game",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
-                    "user"
+                    "player"
                 ],
-                "summary": "user joins game",
+                "summary": "player joins game",
                 "parameters": [
                     {
                         "description": "user name, desired capacity",
@@ -33,6 +33,30 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/types.PostPlayerJoinHandlerRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/player/status": {
+            "post": {
+                "description": "sends status info",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "player"
+                ],
+                "summary": "sends status info",
+                "parameters": [
+                    {
+                        "description": "user id",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.PostPlayerStatusHandlerRequest"
                         }
                     }
                 ],
@@ -48,6 +72,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "nickname": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.PostPlayerStatusHandlerRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
                     "type": "string"
                 }
             }

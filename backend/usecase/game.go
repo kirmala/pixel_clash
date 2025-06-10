@@ -3,7 +3,7 @@ package usecase
 import "pixel_clash/model"
 
 type Game interface {
-	Find(player model.Player) (string, string)
+	Find(player model.Player)
 	// Move(game model.Game, x, y int, userId string) error
 	// Stop(game model.Game) error
 }

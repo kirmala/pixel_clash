@@ -25,35 +25,33 @@ func NewGame(gameRepo repository.Game, playerRepo repository.Player) *Game {
 	}
 }
 
-func (g *Game) Find(player model.Player) (string, string) {
+func (g *Game) Find(player model.Player) {
 	game, err := g.Repo.Find(player)
 
 	if err != nil {
-		newGame := model.Game{Id: uuid.NewString(), Status: "waiting", Players: []model.Player{player}, Capacity: player.GameCapacity}
-		g.Repo.Post(newGame)
-		player.Status = "searching"
-		player.GameId = newGame.Id
-		g.PlayerRepo.Put(player)
-		return newGame.Id, player.Status
+		game = &model.Game{Id: uuid.NewString(), Status: "waiting", Players: []model.Player{player}, Capacity: player.GameCapacity}
 	} else {
 		game.Players = append(game.Players, player)
-		if len(game.Players) == game.Capacity {
-			game = g.start(*game)
-		}
-		g.Repo.Put(*game)
-		player, _ := g.PlayerRepo.Get(player.Id)
+	}
 
-		return game.Id, player.Status
+	g.Repo.Put(*game)
+	player.GameId = game.Id
+	player.Status = "searching"
+	g.PlayerRepo.Put(player)
+
+	if (game.Capacity == len(game.Players)) {
+		g.start(*game)
 	}
 }
 
-func (g *Game) start(game model.Game) *model.Game {
+func (g *Game) start(game model.Game) {
 	game.Status = "started"
-	for _, player := range game.Players {
+	for i, player := range game.Players {
 		player.Status = "playing"
+		player.Color = i
 		g.PlayerRepo.Put(player)
 	}
-	return &game
+	g.Repo.Put(game)
 }
 
 // func (g *Game) Move(game model.Game, User model.User, x, y int) {

@@ -7,6 +7,11 @@ definitions:
       nickname:
         type: string
     type: object
+  types.PostPlayerStatusHandlerRequest:
+    properties:
+      id:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -18,7 +23,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: user joins game
+      description: player joins game
       parameters:
       - description: user name, desired capacity
         in: body
@@ -27,7 +32,23 @@ paths:
         schema:
           $ref: '#/definitions/types.PostPlayerJoinHandlerRequest'
       responses: {}
-      summary: user joins game
+      summary: player joins game
       tags:
-      - user
+      - player
+  /player/status:
+    post:
+      consumes:
+      - application/json
+      description: sends status info
+      parameters:
+      - description: user id
+        in: body
+        name: name
+        required: true
+        schema:
+          $ref: '#/definitions/types.PostPlayerStatusHandlerRequest'
+      responses: {}
+      summary: sends status info
+      tags:
+      - player
 swagger: "2.0"
