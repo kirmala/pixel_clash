@@ -1,6 +1,7 @@
 package service
 
 import (
+	"go/constant"
 	"pixel_clash/model"
 	"pixel_clash/repository"
 
@@ -54,8 +55,46 @@ func (g *Game) start(game model.Game) {
 	g.Repo.Put(game)
 }
 
-// func (g *Game) Move(game model.Game, User model.User, x, y int) {
-// 	game.Feild[y][x] = User.Color
+type coordiante struct {
+	x, y int
+}
 
+func (g *Game) Move(player model.Player, x, y int) {
+	game, _ := g.Repo.Get(player.GameId)
+	game.Feild[y][x] = player.Color
 
-// }
+    rows, cols := len(game.Feild), len(game.Feild[0])
+    visited := make([][]bool, rows)
+    for i := range visited {
+        visited[i] = make([]bool, cols)
+    }
+    
+    directions := [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+
+	var component [][2]int
+    queue := [][2]int{{y, x}}
+    visited[y][x] = true
+                
+	for len(queue) > 0 {
+		cell := queue[0]
+		queue = queue[1:]
+		component = append(component, cell)
+		
+		for _, dir := range directions {
+			ni, nj := cell[0]+dir[0], cell[1]+dir[1]
+			if ni >= 0 && ni < rows && nj >= 0 && nj < cols &&
+				game.Feild[ni][nj] != 0 && !visited[ni][nj] {
+				visited[ni][nj] = true
+				queue = append(queue, [2]int{ni, nj})
+			}
+		}
+	}
+                
+    // Remove if large enough
+	if len(component) >= game.ThreasholdSquare {
+		for _, cell := range component {
+			game.Feild[cell[0]][cell[1]] = 0
+			game.ColorToPlayer[game.Feild[cell[0]][cell[1]]]--
+		}
+	}
+}

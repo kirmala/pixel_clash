@@ -4,6 +4,6 @@ import "pixel_clash/model"
 
 type Game interface {
 	Find(player model.Player)
-	// Move(game model.Game, x, y int, userId string) error
+	Move(player model.Player, x, y int) error
 	// Stop(game model.Game) error
 }

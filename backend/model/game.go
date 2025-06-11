@@ -5,11 +5,14 @@ import (
 )
 
 type Game struct {
+	Id string
 	Players []Player
 	Capacity int
-	Id string
 	Feild   [][]int
-	Status  string
+	ThreasholdSquare int
 	Timer time.Timer
+
+	Status  string
+	
 	Winner string
 }

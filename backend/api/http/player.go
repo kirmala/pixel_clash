@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"pixel_clash/api/http/types"
+	"pixel_clash/api/websocket"
 	"pixel_clash/model"
 	"pixel_clash/usecase"
 
@@ -13,6 +14,8 @@ import (
 type Player struct {
 	service usecase.Player
 	gameService usecase.Game
+
+	gameWebscoket websocket.Game
 }
 
 
@@ -76,5 +79,6 @@ func (u *Player) WithPlayerHandlers(r chi.Router) {
 	r.Route("/player", func(r chi.Router) {
 		r.Post("/join", u.joinHandler)
 		r.Post("/status", u.statusHandler)
+		r.Post("/start/{playerID}", u.gameWebscoket.HandleWebSocket)
 	})
 }
