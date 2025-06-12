@@ -1,4 +1,4 @@
-package ram
+package sram
 
 import (
 	"pixel_clash/model"
@@ -24,9 +24,17 @@ func (g *Game) Post(game model.Game) error {
 	return nil
 }
 
+func (g *Game) Get(id string) (*model.Game, error){
+	game, ok := g.data[id]
+	if !ok {
+		return nil, repository.ErrorKeyNotFound
+	}
+	return &game, nil
+}
+
 func (g *Game) Find(player model.Player) (*model.Game, error) {
 	for _, game := range g.data{
-		if game.Status == "waiting" && game.Capacity == player.GameCapacity {
+		if game.Status == "waiting" && game.Type == player.GameType {
 			return &game, nil
 		}
 	}

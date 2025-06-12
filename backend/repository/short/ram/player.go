@@ -1,4 +1,4 @@
-package ram
+package sram
 
 import (
 	"pixel_clash/model"

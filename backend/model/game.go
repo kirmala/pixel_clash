@@ -1,18 +1,13 @@
 package model
 
 import (
-	"time"
+	"pixel_clash/ctypes"
 )
 
 type Game struct {
 	Id string
-	Players []Player
-	Capacity int
-	Feild   [][]int
-	ThreasholdSquare int
-	Timer time.Timer
-
+	PlayerIds []string
+	Type ctypes.Game 
+	Feild   [][]ctypes.Cell
 	Status  string
-	
-	Winner string
 }

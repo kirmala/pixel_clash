@@ -2,62 +2,77 @@ package websocket
 
 import (
 	"net/http"
+	"pixel_clash/api/websocket/types"
+	"pixel_clash/model"
 	"pixel_clash/usecase"
 
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
 type Game struct {
-	service usecase.Game
-	playerService usecase.Player
+	Service usecase.Game
+	PlayerService usecase.Player
+
+	upgrader websocket.Upgrader
 }
 
-func NewGame(service usecase.Game, playerService usecase.Player) *Game {
-	return &Game{
-		service: service,
-		playerService: playerService,
-	}
+
+func NewGameWebsocketHandler(playerService usecase.Player, gameService usecase.Game) *Game {
+	return &Game{Service: gameService, PlayerService: playerService}
 }
 
-func (g *Game) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	playerID := chi.URLParam(r, "playerID")
-    if playerID == "" {
-        http.Error(w, "Player ID is required", http.StatusBadRequest)
+func (g *Game) JoinHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := g.upgrader.Upgrade(w, r, nil)
+
+	if err != nil {
+        http.Error(w, "Bad request", http.StatusBadRequest)
         return
     }
 
-	player, err := g.playerService.Get(playerID)
-
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-	}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	defer func() {
-		conn.Close()
+		if conn != nil {
+			conn.Close()
+		}
 	}()
 
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
-		
-		x, y := parse(message)
+	var joinReq types.JoinHandlerRequest
+    if err := conn.ReadJSON(&joinReq); err != nil {
+        types.ProcessError(conn, nil, err)
+        return
+    }
 
-		g.service.Move(player, x, y)
+	player := model.Player{Id : uuid.NewString(), Nickname: joinReq.Nickname, GameType: joinReq.GameType}
+	
+	gameId := g.Service.Find(player)
+	player.GameId = gameId
+
+	err = g.PlayerService.Post(player)
+
+	types.ProcessError(
+		conn,
+		types.JoinHandlerResponse{
+			GameId:   player.GameId,
+			PlayerId: player.Id,
+    	},
+		err,
+	)
+
+	for {
+		var req types.MoveRequest
+		if err := conn.ReadJSON(&req); err != nil {
+			types.ProcessError(conn, nil, err)
+			return
+		}
+
+		g.Service.Move(req.PlayerId, req.X, req.Y)
 	}
+}
+
+
+func (g *Game) WithGameHandlers(r chi.Router) {
+	r.Route("/", func(r chi.Router) {
+		r.Post("/join", g.JoinHandler)
+	})
 }

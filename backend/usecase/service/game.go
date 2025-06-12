@@ -1,67 +1,73 @@
 package service
 
 import (
-	"go/constant"
+	"fmt"
+	"pixel_clash/ctypes"
 	"pixel_clash/model"
-	"pixel_clash/repository"
+	srepository "pixel_clash/repository/short"
 
 	"github.com/google/uuid"
 )
 
-const (
-	rows = 10
-	cols = 10
-	gameTime = 60
-)
+
 
 type Game struct {
-	Repo repository.Game
-	PlayerRepo repository.Player
+	ShortRepo srepository.Game
+	PlayerRepo srepository.Player
 }
 
-func NewGame(gameRepo repository.Game, playerRepo repository.Player) *Game {
+func NewGame(shortGameRepo srepository.Game, playerRepo srepository.Player) *Game {
 	return &Game{
-		Repo:    gameRepo,
+		ShortRepo:  shortGameRepo,
 		PlayerRepo: playerRepo,
 	}
 }
 
-func (g *Game) Find(player model.Player) {
-	game, err := g.Repo.Find(player)
+func (g *Game) Find(player model.Player) string {
+	game, err := g.ShortRepo.Find(player)
 
 	if err != nil {
-		game = &model.Game{Id: uuid.NewString(), Status: "waiting", Players: []model.Player{player}, Capacity: player.GameCapacity}
+		game = &model.Game{Id: uuid.NewString(), Status: "waiting", PlayerIds: []string{player.Id}, Type : player.GameType}
+
+		game.Feild = make([][]ctypes.Cell, game.Type.FeildSize)
+		for i := range game.Feild {
+			game.Feild[i] = make([]ctypes.Cell, game.Type.FeildSize)
+			for j := range game.Feild[i] {
+				game.Feild[i][j] = ctypes.Cell{
+					CompSize: 0,
+					Color: "",
+				}
+			}
+		}
 	} else {
-		game.Players = append(game.Players, player)
+		game.PlayerIds = append(game.PlayerIds, player.Id)
 	}
 
-	g.Repo.Put(*game)
-	player.GameId = game.Id
-	player.Status = "searching"
-	g.PlayerRepo.Put(player)
+	g.ShortRepo.Put(*game)
 
-	if (game.Capacity == len(game.Players)) {
+	if game.Type.FeildSize == len(game.PlayerIds) {
 		g.start(*game)
 	}
+
+	return game.Id
 }
 
 func (g *Game) start(game model.Game) {
 	game.Status = "started"
-	for i, player := range game.Players {
-		player.Status = "playing"
-		player.Color = i
-		g.PlayerRepo.Put(player)
+	g.ShortRepo.Put(game)
+	for _, id := range game.PlayerIds {
+		player, _ := g.PlayerRepo.Get(id)
+		player.Connection.WriteJSON(game)
 	}
-	g.Repo.Put(game)
 }
 
-type coordiante struct {
-	x, y int
-}
-
-func (g *Game) Move(player model.Player, x, y int) {
-	game, _ := g.Repo.Get(player.GameId)
-	game.Feild[y][x] = player.Color
+func (g *Game) Move(playerId string, x, y int) error {
+	player, _ := g.PlayerRepo.Get(playerId)
+	game, _ := g.ShortRepo.Get(player.GameId)
+	if (y >= game.Type.FeildSize || y < 0) || (x >= game.Type.FeildSize || x < 0) {
+		return fmt.Errorf("move coordinates out of bound")
+	}
+	game.Feild[y][x].Color = player.Id
 
     rows, cols := len(game.Feild), len(game.Feild[0])
     visited := make([][]bool, rows)
@@ -83,18 +89,27 @@ func (g *Game) Move(player model.Player, x, y int) {
 		for _, dir := range directions {
 			ni, nj := cell[0]+dir[0], cell[1]+dir[1]
 			if ni >= 0 && ni < rows && nj >= 0 && nj < cols &&
-				game.Feild[ni][nj] != 0 && !visited[ni][nj] {
+				game.Feild[ni][nj].Color != "" && !visited[ni][nj] {
 				visited[ni][nj] = true
 				queue = append(queue, [2]int{ni, nj})
 			}
 		}
 	}
+
+	for _, cell := range component {
+		game.Feild[cell[0]][cell[1]].CompSize = len(component)
+	}
                 
-    // Remove if large enough
-	if len(component) >= game.ThreasholdSquare {
+	if len(component) >= game.Type.ThreasholdSqare {
 		for _, cell := range component {
-			game.Feild[cell[0]][cell[1]] = 0
-			game.ColorToPlayer[game.Feild[cell[0]][cell[1]]]--
+			game.Feild[cell[0]][cell[1]] = ctypes.Cell{}
 		}
 	}
+
+	for _, playerId := range game.PlayerIds {
+		broadcastPlayer, _ := g.PlayerRepo.Get(playerId)
+		broadcastPlayer.Connection.WriteJSON(game)
+	}
+
+	return nil
 }

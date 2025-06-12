@@ -2,14 +2,14 @@ package service
 
 import (
 	"pixel_clash/model"
-	"pixel_clash/repository"
+	srepository "pixel_clash/repository/short"
 )
 
 type Player struct {
-	Repo repository.Player
+	Repo srepository.Player
 }
 
-func NewPlayer(PlayerRepo repository.Player) *Player {
+func NewPlayer(PlayerRepo srepository.Player) *Player {
 	return &Player{
 		Repo:    PlayerRepo,
 	}

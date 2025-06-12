@@ -1,4 +1,4 @@
-package repository
+package srepository
 
 import "pixel_clash/model"
 
