@@ -48,12 +48,8 @@ func (g *Game) JoinHandler(w http.ResponseWriter, r *http.Request) {
 	gameId := g.Service.Find(player)
 	player.GameId = gameId
 
-	if err = g.PlayerService.Post(player); err != nil {
-        types.SendError(conn, err)
-        return
-    }
+	g.PlayerService.Post(player)
 	
-
 	types.SendResponse(
 		conn,
 		types.JoinHandlerResponse{
@@ -66,16 +62,24 @@ func (g *Game) JoinHandler(w http.ResponseWriter, r *http.Request) {
 		var req types.MoveRequest
 		if err := conn.ReadJSON(&req); err != nil {
 			types.SendError(conn, err)
-			return
+			continue
 		}
 
 		_, err := g.PlayerService.Get(req.PlayerId)
 
 		if err != nil {
 			types.SendError(conn, err)
+			continue
 		}
 
-		g.Service.Move(req.PlayerId, req.X, req.Y)
+		err = g.Service.Move(req.PlayerId, req.X, req.Y)
+
+		if err != nil {
+			types.SendError(conn, err)
+			continue
+		}
+
+		types.SendResponse(conn, nil)
 	}
 }
 
