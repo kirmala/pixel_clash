@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"pixel_clash/api/websocket/types"
 	"pixel_clash/ctypes"
 	"pixel_clash/model"
 	srepository "pixel_clash/repository/short"
@@ -108,7 +109,7 @@ func (g *Game) Move(playerId string, x, y int) error {
 
 	for _, playerId := range game.PlayerIds {
 		broadcastPlayer, _ := g.PlayerRepo.Get(playerId)
-		broadcastPlayer.Connection.WriteJSON(game)
+		types.SendResponse(broadcastPlayer.Connection, game)
 	}
 
 	return nil

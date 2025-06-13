@@ -6,19 +6,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type errorMsg struct {
-	Err string `json:"error"`
+type StatusMessage struct {
+	Status string `json:"status"`
 }
 
-func ProcessError(conn *websocket.Conn, resp any, err error) {
-	if err != nil {
-		wErr := conn.WriteJSON(errorMsg{Err : err.Error()})
-		if wErr != nil {
-			log.Printf("%s\n", wErr.Error())
-		}
-		return
+func SendError(conn *websocket.Conn, err error) {
+	wErr := conn.WriteJSON(StatusMessage{Status : err.Error()})
+	if wErr != nil {
+		log.Printf("%s\n", wErr.Error())
 	}
-	wErr := conn.WriteJSON(errorMsg{Err : ""})
+}
+
+func SendResponse(conn *websocket.Conn, resp any) {
+	wErr := conn.WriteJSON(StatusMessage{Status : "OK"})
 	if wErr != nil {
 		log.Printf("%s\n", wErr.Error())
 	}
