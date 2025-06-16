@@ -14,10 +14,15 @@ func NewGame() *Game {
 	return &Game{data: make(map[string]model.Game)}
 }
 
-func (g *Game) Put(game model.Game) {
+func (g *Game) Put(game model.Game) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	game = g.data[game.Id]
+	if game.Status == "started" {
+		return repository.ErrorGameAlreadyStarted
+	}
 	g.data[game.Id] = game
+	return nil
 }
 
 func (g *Game) Post(game model.Game) error {

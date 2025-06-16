@@ -2,8 +2,6 @@ package model
 
 import (
 	"pixel_clash/ctypes"
-
-	"github.com/gorilla/websocket"
 )
 
 type Player struct {
@@ -12,5 +10,5 @@ type Player struct {
 	Nickname   string
 	GameType   ctypes.Game
 	GameId     string
-	Connection *websocket.Conn
+	Send chan ctypes.ServerEvent
 }

@@ -2,7 +2,8 @@ package main
 
 import (
 	"log"
-	"pixel_clash/api/websocket"
+	"pixel_clash/api/http"
+	"pixel_clash/api/ws"
 	pkgHttp "pixel_clash/pkg/http"
 	"pixel_clash/repository/short/ram"
 	"pixel_clash/usecase/service"
@@ -29,13 +30,14 @@ func main() {
 	gameService := service.NewGame(gameRepo, playerRepo)
 	playerService := service.NewPlayer(playerRepo)
 
-	joinHandler := websocket.NewGameWebsocketHandler(playerService, gameService)
+	wsConnection := ws.NewGame(gameService, playerService)
+	userHandlers := http.NewUserHandler(*wsConnection)
 
 	r := chi.NewRouter()
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:8080/swagger/doc.json"), //The url pointing to API definition
 	))
-	joinHandler.WithGameHandlers(r)
+	userHandlers.WithUserHandlers(r)
 
 	log.Printf("Starting server on %s", addr)
 	if err := pkgHttp.CreateAndRunServer(r, addr); err != nil {

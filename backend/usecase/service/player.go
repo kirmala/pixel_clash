@@ -23,5 +23,9 @@ func (u *Player) Get(id string) (*model.Player, error) {
 	return u.Repo.Get(id)
 }
 
+func (u *Player) Delete(id string) error {
+	return u.Repo.Delete(id)
+}
+
 
 

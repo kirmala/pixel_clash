@@ -40,4 +40,16 @@ func (p *Player) Get(id string) (*model.Player, error){
 	return &player, nil
 }
 
+func (p *Player) Delete(id string) error {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	person, ok := p.data[id]
+	if !ok {
+		return repository.ErrorKeyNotFound
+	}
+	close(person.Send)
+	delete(p.data, id)
+	return nil
+}
+
 

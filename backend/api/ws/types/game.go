@@ -2,15 +2,14 @@ package types
 
 import (
 	"pixel_clash/ctypes"
-	"pixel_clash/model"
 )
 
-type JoinHandlerRequest struct {
+type FindGameRequest struct {
 	Nickname string `json:"nickname"`
 	GameType ctypes.Game  `json:"game_type"`
 }
 
-type JoinHandlerResponse struct {
+type FindGameResponse struct {
 	GameId string `json:"game_id"`
 	PlayerId string `json:"player_id"`
 }
@@ -22,5 +21,13 @@ type MoveRequest struct {
 }
 
 type MoveResponse struct {
-	Game model.Game `json:"game"`
+	Message string `json:"message"`
+}
+
+type StopSearchingRequest struct {
+	PlayerId string `json:"player_id"`
+}
+
+type StopSearchingResponse struct {
+	Message string `json:"message"`
 }

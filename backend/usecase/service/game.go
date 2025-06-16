@@ -2,10 +2,10 @@ package service
 
 import (
 	"fmt"
-	"pixel_clash/api/websocket/types"
 	"pixel_clash/ctypes"
 	"pixel_clash/model"
 	srepository "pixel_clash/repository/short"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -28,38 +28,52 @@ func (g *Game) Find(player model.Player) string {
 	game, err := g.ShortRepo.Find(player)
 
 	if err != nil {
-		game = &model.Game{Id: uuid.NewString(), Status: "waiting", PlayerIds: []string{player.Id}, Type : player.GameType}
+		game = &model.Game{Id: uuid.NewString(), Status: "waiting", PlayerIds: make(map[string]struct{}), Type : player.GameType, Started: make(chan struct{}, 1)}
+		game.PlayerIds[player.Id] = struct{}{}
 
-		game.Feild = make([][]ctypes.Cell, game.Type.FeildSize)
-		for i := range game.Feild {
-			game.Feild[i] = make([]ctypes.Cell, game.Type.FeildSize)
-			for j := range game.Feild[i] {
-				game.Feild[i][j] = ctypes.Cell{
+		game.Feild.Data = make([][]ctypes.Cell, game.Type.FeildSize)
+		for i := range game.Feild.Data {
+			game.Feild.Data[i] = make([]ctypes.Cell, game.Type.FeildSize)
+			for j := range game.Feild.Data[i] {
+				game.Feild.Data[i][j] = ctypes.Cell{
 					CompSize: 0,
 					Color: "",
 				}
 			}
 		}
 	} else {
-		game.PlayerIds = append(game.PlayerIds, player.Id)
+		game.PlayerIds[player.Id] = struct{}{}
 	}
 
 	g.ShortRepo.Put(*game)
 
 	if game.Type.FeildSize == len(game.PlayerIds) {
-		g.start(*game)
+		go g.start(*game)
 	}
 
 	return game.Id
 }
 
+func (g *Game) RemovePlayer(playerId string) error {
+	player, _ := g.PlayerRepo.Get(playerId)
+	game, err := g.ShortRepo.Get(player.GameId)
+
+	if err != nil {
+		return fmt.Errorf("error removing player from game search: %s", err)
+	}
+
+	delete(game.PlayerIds, player.Id)
+	if err := g.ShortRepo.Put(*game); err != nil {
+		return fmt.Errorf("error removing player from game search: %s", err)
+	}
+	return nil
+}
+
 func (g *Game) start(game model.Game) {
 	game.Status = "started"
+	game.Timer = *time.NewTimer(time.Second*time.Duration(game.Type.Time))
 	g.ShortRepo.Put(game)
-	for _, id := range game.PlayerIds {
-		player, _ := g.PlayerRepo.Get(id)
-		player.Connection.WriteJSON(game)
-	}
+	g.broadcast(game, ctypes.ServerEvent{Type: "game_found"})
 }
 
 func (g *Game) Move(playerId string, x, y int) error {
@@ -68,9 +82,9 @@ func (g *Game) Move(playerId string, x, y int) error {
 	if (y >= game.Type.FeildSize || y < 0) || (x >= game.Type.FeildSize || x < 0) {
 		return fmt.Errorf("move coordinates out of bound")
 	}
-	game.Feild[y][x].Color = player.Id
+	game.Feild.Data[y][x].Color = player.Id
 
-    rows, cols := len(game.Feild), len(game.Feild[0])
+    rows, cols := len(game.Feild.Data), len(game.Feild.Data[0])
     visited := make([][]bool, rows)
     for i := range visited {
         visited[i] = make([]bool, cols)
@@ -90,7 +104,7 @@ func (g *Game) Move(playerId string, x, y int) error {
 		for _, dir := range directions {
 			ni, nj := cell[0]+dir[0], cell[1]+dir[1]
 			if ni >= 0 && ni < rows && nj >= 0 && nj < cols &&
-				game.Feild[ni][nj].Color != "" && !visited[ni][nj] {
+				game.Feild.Data[ni][nj].Color != "" && !visited[ni][nj] {
 				visited[ni][nj] = true
 				queue = append(queue, [2]int{ni, nj})
 			}
@@ -98,19 +112,23 @@ func (g *Game) Move(playerId string, x, y int) error {
 	}
 
 	for _, cell := range component {
-		game.Feild[cell[0]][cell[1]].CompSize = len(component)
+		game.Feild.Data[cell[0]][cell[1]].CompSize = len(component)
 	}
                 
 	if len(component) >= game.Type.ThreasholdSqare {
 		for _, cell := range component {
-			game.Feild[cell[0]][cell[1]] = ctypes.Cell{}
+			game.Feild.Data[cell[0]][cell[1]] = ctypes.Cell{}
 		}
 	}
 
-	for _, playerId := range game.PlayerIds {
-		broadcastPlayer, _ := g.PlayerRepo.Get(playerId)
-		types.SendResponse(broadcastPlayer.Connection, game)
-	}
+	g.broadcast(*game, ctypes.ServerEvent{Type: "player_move", Data: game.Feild})
 
 	return nil
+}
+
+func (g *Game) broadcast(game model.Game, event ctypes.ServerEvent) {
+	for playerId := range game.PlayerIds {
+		player, _ := g.PlayerRepo.Get(playerId)
+		player.Send <- event
+	}
 }
