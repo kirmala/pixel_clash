@@ -69,12 +69,12 @@ func (g *Game) Handle(conn *websocket.Conn, player model.Player) {
         		conn.WriteJSON(types.ServerResponse{Status : "error", Data: "error parsing request"})
             	continue
     		}
-			if err := g.Service.RemovePlayer(req.PlayerId); err != nil {
+			if err := g.Service.RemovePlayer(player.Id); err != nil {
 				conn.WriteJSON(types.ServerResponse{Type: "stop_searching_result", ID: msg.ID, Status : "error", Data: err.Error()})
 				continue
 			}
 
-			if err := g.PlayerService.Delete(req.PlayerId); err != nil {
+			if err := g.PlayerService.Delete(player.Id); err != nil {
         		conn.WriteJSON(types.ServerResponse{Type: "stop_searching_result", ID: msg.ID, Status : "error", Data: err.Error()})
 				continue
     		}
@@ -87,7 +87,7 @@ func (g *Game) Handle(conn *websocket.Conn, player model.Player) {
         		conn.WriteJSON(types.ServerResponse{Status : "error", Data: "error parsing request"})
             	continue
     		}
-			err := g.Service.Move(req.PlayerId, req.X, req.Y)
+			err := g.Service.Move(player.Id, req.X, req.Y)
 			if err != nil {
 				conn.WriteJSON(types.ServerResponse{Type: "move_result", ID: msg.ID, Status : "error", Data: err.Error()})
             	continue

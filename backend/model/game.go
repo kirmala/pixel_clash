@@ -11,6 +11,5 @@ type Game struct {
 	Type ctypes.Game 
 	Feild   ctypes.Feild
 	Status  string
-	Started chan struct{}
 	Timer time.Timer
 }
