@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"pixel_clash/ctypes"
 	"pixel_clash/model"
 	srepository "pixel_clash/repository/short"
@@ -28,7 +29,7 @@ func (g *Game) Find(player model.Player) string {
 	game, err := g.ShortRepo.Find(player)
 
 	if err != nil {
-		game = &model.Game{Id: uuid.NewString(), Status: "waiting", PlayerIds: make(map[string]struct{}), Type : player.GameType, Started: make(chan struct{}, 1)}
+		game = &model.Game{Id: uuid.NewString(), Status: "waiting", PlayerIds: make(map[string]struct{}), Type : player.GameType}
 		game.PlayerIds[player.Id] = struct{}{}
 
 		game.Feild.Data = make([][]ctypes.Cell, game.Type.FeildSize)
@@ -69,9 +70,28 @@ func (g *Game) RemovePlayer(playerId string) error {
 	return nil
 }
 
+func (g *Game) manageTimer(game model.Game) {
+	defer game.Timer.Stop()
+	<-game.Timer.C
+	
+	g.finish(game)
+}
+
+func (g *Game) finish(game model.Game) {
+	sGame, _ := g.ShortRepo.Get(game.Id)
+	g.broadcast(*sGame, ctypes.ServerEvent{Type: "game_finished", Data: game.Feild})
+	for playerId := range game.PlayerIds {
+		err := g.PlayerRepo.Delete(playerId)
+		if err != nil {
+			log.Printf("error ending game: %s", err)
+		}
+	}
+}
+
 func (g *Game) start(game model.Game) {
 	game.Status = "started"
 	game.Timer = *time.NewTimer(time.Second*time.Duration(game.Type.Time))
+	go g.manageTimer(game)
 	g.ShortRepo.Put(game)
 	g.broadcast(game, ctypes.ServerEvent{Type: "game_found"})
 }
