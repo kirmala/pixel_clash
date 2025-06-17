@@ -79,8 +79,11 @@ func (g *Game) start(game model.Game) {
 func (g *Game) Move(playerId string, x, y int) error {
 	player, _ := g.PlayerRepo.Get(playerId)
 	game, _ := g.ShortRepo.Get(player.GameId)
+	if game.Status != "started" {
+		return fmt.Errorf("error making a move: game did not start yet")
+	}
 	if (y >= game.Type.FeildSize || y < 0) || (x >= game.Type.FeildSize || x < 0) {
-		return fmt.Errorf("move coordinates out of bound")
+		return fmt.Errorf("error making a move: coordinates out of bound")
 	}
 	game.Feild.Data[y][x].Color = player.Id
 
