@@ -10,12 +10,10 @@ type FindGameRequest struct {
 }
 
 type FindGameResponse struct {
-	GameId string `json:"game_id"`
-	PlayerId string `json:"player_id"`
+	Message string `json:"message"`
 }
 
 type MoveRequest struct {
-	PlayerId string `json:"player_id"`
 	X int `json:"x"`
 	Y int `json:"y"`
 }
@@ -25,7 +23,7 @@ type MoveResponse struct {
 }
 
 type StopSearchingRequest struct {
-	PlayerId string `json:"player_id"`
+	Message string `json:"message"`
 }
 
 type StopSearchingResponse struct {

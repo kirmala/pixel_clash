@@ -17,7 +17,10 @@ func NewGame() *Game {
 func (g *Game) Put(game model.Game) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	game = g.data[game.Id]
+	game, ok := g.data[game.Id]
+	if !ok {
+		return repository.ErrorKeyNotFound
+	}
 	if game.Status == "started" {
 		return repository.ErrorGameAlreadyStarted
 	}
@@ -43,6 +46,16 @@ func (g *Game) Get(id string) (*model.Game, error){
 		return nil, repository.ErrorKeyNotFound
 	}
 	return &game, nil
+}
+
+func (g *Game) Delete(game model.Game) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, exists := g.data[game.Id]; exists {
+		return repository.ErrorKeyNotFound
+	}
+	delete(g.data, game.Id)
+	return nil
 }
 
 func (g *Game) Find(player model.Player) (*model.Game, error) {

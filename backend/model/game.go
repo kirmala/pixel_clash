@@ -6,10 +6,11 @@ import (
 )
 
 type Game struct {
-	Id string
-	PlayerIds map[string]struct{}
-	Type ctypes.Game 
-	Feild   ctypes.Feild
+	Id      string
+	Players map[Player]struct{}
+	Type    ctypes.Game
+	Field   ctypes.Field
 	Status  string
-	Timer time.Timer
+	Scores  ctypes.Scores
+	Timer   time.Timer
 }

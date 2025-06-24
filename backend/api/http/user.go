@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"pixel_clash/api/ws"
 	"pixel_clash/model"
+	"sync"
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
@@ -33,13 +34,13 @@ func (u *User) JoinHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	player := model.Player{Id: uuid.NewString()}
-	u.gameConnection.Handle(conn, player)
+	player := model.Player{Id: uuid.NewString(), Conn: conn, Lock: &sync.Mutex{}}
+	u.gameConnection.Handle(player)
 }
 
 // WithUserHandlers registers user-related HTTP handlers.
 func (u *User) WithUserHandlers(r chi.Router) {
 	r.Route("/user", func(r chi.Router) {
-		r.Post("/join", u.JoinHandler)
+		r.Get("/join", u.JoinHandler)
 	})
 }

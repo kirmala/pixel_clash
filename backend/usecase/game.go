@@ -6,6 +6,6 @@ import (
 
 type Game interface {
 	Find(player model.Player) string
-	Move(playerId string, x, y int) error
-	RemovePlayer(playerId string) error
+	Move(player model.Player, x, y int) error
+	RemovePlayer(player model.Player) error
 }

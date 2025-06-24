@@ -1,9 +1,8 @@
 package ctypes
 
 type Game struct {
-	Size int `json:"size"`
-	FeildSize int `json:"feild_size"`
-	Time int `json:"time"`
-	ThreasholdSqare int `json:"threashold_square"`
+	Size           int `json:"size"`
+	FieldSize      int `json:"field_size"`
+	Time           int `json:"time"`
+	ThresholdSqare int `json:"threshold_square"`
 }
-

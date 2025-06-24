@@ -25,12 +25,10 @@ func main() {
 	addr := "0.0.0.0:8080"
 
 	gameRepo := sram.NewGame()
-	playerRepo := sram.NewPlayer()
 
-	gameService := service.NewGame(gameRepo, playerRepo)
-	playerService := service.NewPlayer(playerRepo)
+	gameService := service.NewGame(gameRepo)
 
-	wsConnection := ws.NewGame(gameService, playerService)
+	wsConnection := ws.NewGame(gameService)
 	userHandlers := http.NewUserHandler(*wsConnection)
 
 	r := chi.NewRouter()
