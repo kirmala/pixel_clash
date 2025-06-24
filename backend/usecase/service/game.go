@@ -97,8 +97,11 @@ func (g *Game) start(game model.Game) {
 	go g.broadcast(game, ctypes.ServerEvent{Type: "game_found"})
 }
 
-func (g *Game) Move(player model.Player, x, y int) error {
+func (g *Game) Move(player *model.Player, x, y int) error {
 	game, err := g.ShortRepo.Get(player.GameId)
+	if time.Now().Before(player.LastMove.Add(time.Duration(game.Type.Cooldown))) {
+		return fmt.Errorf("making a move: you are on a cooldown")
+	}
 	if err != nil {
 		return fmt.Errorf("making a move %s", err)
 	}
@@ -154,6 +157,8 @@ func (g *Game) Move(player model.Player, x, y int) error {
 	if err := g.ShortRepo.Put(*game); err != nil {
 		return fmt.Errorf("making a move %s", err)
 	}
+
+	player.LastMove = time.Now()
 
 	go g.broadcast(*game, ctypes.ServerEvent{Type: "player_move", Data: ctypes.PlayerMove{Field: game.Field, Scores: game.Scores}})
 

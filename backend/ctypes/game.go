@@ -5,4 +5,5 @@ type Game struct {
 	FieldSize      int `json:"field_size"`
 	Time           int `json:"time"`
 	ThresholdSqare int `json:"threshold_square"`
+	Cooldown int `json:"cooldown"`
 }

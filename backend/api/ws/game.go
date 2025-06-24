@@ -74,7 +74,7 @@ func (g *Game) response(player model.Player, msg types.Request, cancel context.C
 			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Status : "error", Data: "error parsing request"}}
 			return
 		}
-		err := g.Service.Move(player, req.X, req.Y)
+		err := g.Service.Move(&player, req.X, req.Y)
 		if err != nil {
 			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Type: "move_result", ID: msg.ID, Status : "error", Data: fmt.Sprintf("making a move: %s", err)}}
 			return
