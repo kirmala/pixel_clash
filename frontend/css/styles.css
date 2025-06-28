@@ -10,7 +10,7 @@ body {
 }
 
 #app {
-    width: 800px;
+    width: 1000px;
     height: 600px;
     background-color: white;
     border-radius: 10px;
@@ -25,62 +25,201 @@ body {
     display: none;
     flex: 1;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
 }
 
 .page.active {
     display: flex;
 }
 
+/* Improved button styles */
 button {
-    padding: 10px 20px;
-    margin: 5px;
+    padding: 12px 24px;
+    margin: 8px;
     background-color: #4CAF50;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s;
+    min-wIDth: 180px;
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #3e8e41;
+    transform: translateY(-1px);
 }
 
+button:active {
+    transform: translateY(0);
+}
+
+/* Improved input styles */
 input {
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    padding: 12px;
+    margin: 12px 0;
+    border: 2px solid #ddd;
+    border-radius: 6px;
     font-size: 16px;
+    wIDth: 80%;
+    max-wIDth: 300px;
 }
 
+input:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.game-container {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+
+/* Scores panel */
+.scoreboard {
+    width: 250px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow-y: auto;
+    max-height: 500px;
+}
+
+
+/* Game field improvements */
 .game-field {
+    flex: 1;
     display: grid;
-    grid-template-columns: repeat(25, 1fr);
-    grid-template-rows: repeat(25, 1fr);
     gap: 1px;
-    width: 500px;
+    width: auto;
     height: 500px;
     margin: 0 auto;
-    border: 1px solid #000;
+    border: 2px solid #333;
+    background-color: #333; /* GrID lines color */
 }
+
 
 .cell {
     background-color: #fff;
-    border: 1px solid #eee;
+    position: relative;
+    aspect-ratio: 1; /* Ensures square cells */
 }
 
-.cell.active {
-    background-color: #4CAF50;
+.cell:hover {
+    filter: brightness(0.95);
 }
 
+.size-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    wIDth: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Header and info styles */
 .game-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20px;
+    wIDth: 100%;
+    max-wIDth: 500px;
+    margin: 0 auto 20px;
+    padding: 0 10px;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .search-info {
     margin: 20px 0;
     font-size: 18px;
+    text-align: center;
+}
+
+/* Scoreboard styles */
+/* .scoreboard {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 20px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+} */
+
+.score-list {
+    margin-top: 10px;
+}
+
+.score-entry {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.current-player {
+    background-color: #e8f5e9;
+    font-weight: bold;
+}
+
+.player-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.rank {
+    wIDth: 30px;
+    color: #666;
+}
+
+.player-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.score-value {
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+/* Simple animations */
+.size-pop {
+    animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.2); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.player-cell {
+    box-shadow: inset 0 0 0 2px #4CAF50;
 }

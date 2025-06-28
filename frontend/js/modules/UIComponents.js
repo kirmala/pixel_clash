@@ -1,3 +1,5 @@
+import { GameTypes } from './types/Game.js';
+
 export default class UIComponents {
     constructor(app) {
         this.app = app;
@@ -44,7 +46,6 @@ export default class UIComponents {
                 <input type="text" id="nickname-input" 
                        placeholder="Your nickname" 
                        value="${currentNick}">
-                <button id="submit-nickname">Submit</button>
                 <h1>Select Game Mode</h1>
                 <button id="2players-btn">2 Players</button>
                 <button id="4players-btn">4 Players</button>
@@ -53,15 +54,16 @@ export default class UIComponents {
     }
 
     renderSearchPage() {
-        const playersNeeded = this.app.state.playersCount
+        const playersNeeded = this.app.state.gameType.size
+        const playersWaiting = 1
         document.getElementById('app').innerHTML = `
             <div class="page active" id="search-page">
                 <h1>Searching for Game</h1>
                 <div class="search-info">
-                    Players waiting: <span id="players-waiting">0</span> / 
+                    Players waiting:<span id="players-waiting">${playersWaiting}</span> / 
                     <span id="players-needed">${playersNeeded}</span>
                 </div>
-                <button id="cancel-search">Cancel</button>
+                <button ID="cancel-search">Cancel</button>
             </div>
         `;
     }
@@ -71,70 +73,122 @@ export default class UIComponents {
             <div class="page active" id="game-page">
                 <div class="game-header">
                     <div>Time: <span id="game-timer">00:00</span></div>
-                    <div>Score: <span id="game-score">0</span></div>
                 </div>
-                <div class="game-field" id="game-field"></div>
+                <div class="game-container">
+                    <div class="game-field" id="game-field"></div>
+                    <div class="game-scores" id="current-scores"></div>
+                </div>
             </div>
         `;
-        this.renderGameField(25, 25);
+        this.renderField(this.app.state.field)
+        this.renderScores(this.app.state.participants, "current-scores")
     }
 
-    renderFinishedPage(data) {
-        const scores = data.scores || [];
+    renderFinishedPage() {
         document.getElementById('app').innerHTML = `
             <div class="page active" id="finished-page">
                 <h1>Game Finished</h1>
-                <div id="scores-container">
-                    <h2>Final Scores</h2>
-                    ${scores.map(player => `
-                        <p>${player.name}: ${player.score}</p>
-                    `).join('')}
-                </div>
+                <div id="final-scores"></div>
                 <button id="return-home">Return to Home</button>
+            </div>
+        `;
+        this.renderScores(this.app.state.participants, "final-scores")
+    }
+
+    renderField(field) {
+        const gameField = document.getElementById('game-field');
+        gameField.innerHTML = '';
+
+        // Set grID dimensions based on the field data
+        const rows = field.data.length;
+        const cols = rows > 0 ? field.data[0].length : 0;
+        gameField.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        gameField.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+        // Render each cell
+        field.data.forEach((row, y) => {
+            row.forEach((cell, x) => {
+                const cellElement = document.createElement('div');
+                cellElement.className = 'cell';
+                
+                // Set cell color and size
+                cellElement.style.backgroundColor = this.app.ColorService.getParticipantColor(cell.participant_id);
+                cellElement.dataset.color = this.app.ColorService.getParticipantColor(cell.participant_id);
+                
+                // Create component size display
+                if (cell.comp_size > 0) {
+                    const sizeBadge = document.createElement('div');
+                    sizeBadge.className = 'size-badge';
+                    sizeBadge.textContent = cell.comp_size;
+                    cellElement.appendChild(sizeBadge);
+                }
+                
+                // Add click handler with coordinates
+                cellElement.addEventListener('click', () => {
+                    this.app.gameService.handleCellClick(cell, y, x);
+                });
+                
+                // Store coordinates for easy reference
+                cellElement.dataset.x = x;
+                cellElement.dataset.y = y;
+                
+                gameField.appendChild(cellElement);
+            });
+        });
+    }
+
+    renderScores(participants, containerID) {
+        const container = document.getElementById(containerID);
+        if (!container) return;
+
+        // Convert to array and sort by score (descending)
+        const sortedParticipants = Object.values(participants)
+            .sort((a, b) => b.score - a.score);
+
+        container.innerHTML = `
+            <div class="scoreboard">
+                <h2>Player Scores</h2>
+                <div class="score-list">
+                    ${sortedParticipants.map((participant, index) => {
+                        const color = this.app.ColorService.getParticipantColor(participant.data);
+                        return `
+                            <div class="score-entry ${participant.id === this.app.state.participantID ? 'current-player' : ''}"
+                                style="border-left: 4px solid ${color}">
+                                <span class="rank">${index + 1}.</span>
+                                <span class="player-color" style="background: ${color}"></span>
+                                <span class="player-name">${participant.nickname || participant.id}</span>
+                                <span class="score-value">${participant.score}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
             </div>
         `;
     }
 
-    renderGameField(rows, cols) {
-        const gameField = document.getElementById('game-field');
-        gameField.innerHTML = '';
-        gameField.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-        gameField.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-        
-        for (let i = 0; i < rows * cols; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.addEventListener('click', () => this.app.gameService.handleCellClick(cell));
-            gameField.appendChild(cell);
-        }
-    }
 
     bindPageEvents(pageName) {
         switch (pageName) {
             case 'home':
                 document.getElementById('find-game-btn').addEventListener('click', () => {
+                    this.app.ws.connect()
                     this.app.router.navigate('menu');
                 });
                 break;
                 
             case 'menu':
-                document.getElementById('submit-nickname').addEventListener('click', () => {
-                    const nickname = document.getElementById('nickname-input').value.trim();
-                    if (nickname) {
-                        this.app.updateState({ nickname });
-                    }
-                });
                 document.getElementById('2players-btn').addEventListener('click', () => {
-                    this.app.gameService.startGameSearch(2);
+                    const nickname = document.getElementById('nickname-input').value.trim();
+                    this.app.gameService.startGameSearch(nickname, GameTypes.TWO_PLAYERS);
                 });
                 document.getElementById('4players-btn').addEventListener('click', () => {
-                    this.app.gameService.startGameSearch(4);
+                    const nickname = document.getElementById('nickname-input').value.trim();
+                    this.app.gameService.startGameSearch(nickname, GameTypes.FOUR_PLAYERS);
                 });
                 break;
             case 'search':
                 document.getElementById('cancel-search').addEventListener('click', () => {
-                    clearInterval(this.app.gameService.searchInterval);
-                    this.app.router.navigate('home');
+                    this.app.gameService.cancelSearch();
                 });
                 break;
                 
@@ -146,11 +200,9 @@ export default class UIComponents {
         }
     }
 
-    updateSearchStatus(waiting, needed) {
+    updateSearchStatus(waiting) {
         const waitingEl = document.getElementById('players-waiting');
-        const neededEl = document.getElementById('players-needed');
         if (waitingEl) waitingEl.textContent = waiting;
-        if (neededEl) neededEl.textContent = needed;
     }
 
     updateTimer(seconds) {
@@ -162,8 +214,66 @@ export default class UIComponents {
         }
     }
 
-    updateScore(score) {
-        const scoreEl = document.getElementById('game-score');
-        if (scoreEl) scoreEl.textContent = score;
+    updateField(field) {
+        if (!field?.data) return;
+        const rows = field.data.length;
+        const cols = rows > 0 ? field.data[0].length : 0;
+
+        field.data.forEach((row, y) => {
+            row.forEach((cell, x) => {
+
+                const cellElement = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+                if (!cellElement) return;
+                
+                // Update color
+                const color = this.app.ColorService.getParticipantColor(cell.participant_id);
+                cellElement.style.backgroundColor = color;
+                cellElement.dataset.color = color;
+                
+                // Update size badge
+                let sizeBadge = cellElement.querySelector('.size-badge');
+                if (cell.comp_size > 0) {
+                    if (!sizeBadge) {
+                        sizeBadge = document.createElement('div');
+                        sizeBadge.className = 'size-badge';
+                        cellElement.appendChild(sizeBadge);
+                    }
+                    sizeBadge.textContent = cell.comp_size;
+                } else if (sizeBadge) {
+                    cellElement.removeChild(sizeBadge);
+                }
+            });
+        });
+    }
+
+    updateScores(participants) {
+        const container = document.getElementById("current-scores");
+        if (!container) return;
+
+        if (!container || !participants) return;
+
+        // Convert to array and sort by score (descending)
+        const sortedParticipants = Object.values(participants)
+            .sort((a, b) => b.score - a.score);
+
+        container.innerHTML = `
+            <div class="scoreboard">
+                <h2>Player Scores</h2>
+                <div class="score-list">
+                    ${sortedParticipants.map((participant, index) => {
+                        const color = this.app.ColorService.getParticipantColor(participant.data);
+                        return `
+                            <div class="score-entry ${participant.id === this.app.state.participantID ? 'current-player' : ''}"
+                                style="border-left: 4px solid ${color}">
+                                <span class="rank">${index + 1}.</span>
+                                <span class="player-color" style="background: ${color}"></span>
+                                <span class="player-name">${participant.nickname || participant.id}</span>
+                                <span class="score-value">${participant.score}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     }
 }
