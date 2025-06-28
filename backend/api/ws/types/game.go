@@ -10,7 +10,7 @@ type FindGameRequest struct {
 }
 
 type FindGameResponse struct {
-	Message string `json:"message"`
+	ParticipantID string `json:"participant_id"`
 }
 
 type MoveRequest struct {

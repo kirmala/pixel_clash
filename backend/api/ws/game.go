@@ -27,7 +27,7 @@ func NewGame(gameService usecase.Game) *Game {
 }
 
 
-func (g *Game) response(player model.Player, msg types.Request, cancel context.CancelFunc, send chan ctypes.ServerMessage) {
+func (g *Game) response(player *model.Player, msg types.Request, cancel context.CancelFunc, send chan ctypes.ServerMessage) {
 	switch msg.Type {
 	case "find_game":
 		var req types.FindGameRequest
@@ -38,24 +38,22 @@ func (g *Game) response(player model.Player, msg types.Request, cancel context.C
 		}
 		player.GameType = req.GameType
 		player.Nickname = req.Nickname
-		player.GameId = g.Service.Find(player)
+		gameID, participantID  := g.Service.Find(*player)
+		player.GameID = gameID
+		player.ParticipantID = participantID
 		send <- ctypes.ServerMessage{
 			Type: "response",
 			Data: types.ServerResponse{
 				Type: "find_game_result", 
 				ID: msg.ID,
 				Status : "success",
-				Data: types.FindGameResponse{Message: "searching stopped succefully"},
+				Data: types.FindGameResponse{ParticipantID: player.ParticipantID},
 			},
 		}
 	case "stop_searching":
 		var req types.StopSearchingRequest
 		if err := json.Unmarshal(msg.Data, &req); err != nil {
 			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Status : "error", Data: "error parsing request"}}
-			return
-		}
-		if err := g.Service.RemovePlayer(player); err != nil {
-			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Type: "stop_searching_result", ID: msg.ID, Status : "error", Data: fmt.Sprintf("stopping search: %s", err)}}
 			return
 		}
 		send <- ctypes.ServerMessage{
@@ -74,7 +72,7 @@ func (g *Game) response(player model.Player, msg types.Request, cancel context.C
 			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Status : "error", Data: "error parsing request"}}
 			return
 		}
-		err := g.Service.Move(&player, req.X, req.Y)
+		err := g.Service.Move(player, req.Y, req.X)
 		if err != nil {
 			send <- ctypes.ServerMessage{Type : "response", Data : types.ServerResponse{Type: "move_result", ID: msg.ID, Status : "error", Data: fmt.Sprintf("making a move: %s", err)}}
 			return
@@ -94,7 +92,7 @@ func (g *Game) response(player model.Player, msg types.Request, cancel context.C
 func (g *Game) event(event ctypes.ServerEvent, cancel context.CancelFunc, send chan ctypes.ServerMessage) {
 	msg := ctypes.ServerMessage{Type: "event", Data: event}
 	send <- msg
-	if msg.Type == "game_finish" {
+	if event.Type == "game_finish" {
 		cancel()
 	}
 }
@@ -102,7 +100,13 @@ func (g *Game) event(event ctypes.ServerEvent, cancel context.CancelFunc, send c
 
 func (g *Game) Handle(player model.Player) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		err := g.Service.RemovePlayer(player)
+		if err != nil {
+			log.Printf("canceling connection: %s", err)
+		}
+		cancel()
+	}()
 	player.Send = make(chan ctypes.ServerEvent, 10)
 	read := make(chan types.Request, 10)
 
@@ -112,6 +116,7 @@ func (g *Game) Handle(player model.Player) {
         for {
             select {
             case msg := <- send:
+
                 if err := player.Conn.WriteJSON(msg); err != nil {
                     log.Printf("Write error: %s", err)
 					cancel()
@@ -160,7 +165,7 @@ func (g *Game) Handle(player model.Player) {
 		case <- ctx.Done():
 			return
 		case msg := <- read:
-			go g.response(player, msg, cancel, send)
+			go g.response(&player, msg, cancel, send)
 		case msg := <- player.Send:
 			go g.event(msg, cancel, send)
 		}

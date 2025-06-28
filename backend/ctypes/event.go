@@ -10,8 +10,13 @@ type ServerEvent struct {
 	Data interface{} `json:"data"`
 }
 
+type GameStart struct {
+	Field  Field  `json:"field"`
+	Participants Participants `json:"participants"`
+}
+
 type GameFinish struct {
-	Scores Scores `json:"scores"`
+	Participants Participants `json:"participants"`
 }
 
 type WaitingChange struct {
@@ -20,5 +25,5 @@ type WaitingChange struct {
 
 type PlayerMove struct {
 	Field  Field  `json:"field"`
-	Scores Scores `json:"scores"`
+	Participants Participants `json:"participants"`
 }

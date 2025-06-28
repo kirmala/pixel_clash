@@ -37,7 +37,6 @@ func NewCli(nickname string, gamePref ctypes.Game, URL string) (*Cli, error) {
 // 	return nil
 // }
 
-
 // func (client *Cli) Move(x, y int) error {
 // 	req := types.MoveRequest{X: x, Y: y}
 // 	jReq, err := json.Marshal(req)
@@ -63,17 +62,16 @@ func NewCli(nickname string, gamePref ctypes.Game, URL string) (*Cli, error) {
 // }
 
 func (client *Cli) Send(data interface{}, reqType string) (*string, error) {
-    jData, err := json.Marshal(data)
+	jData, err := json.Marshal(data)
 	if err != nil {
-        return nil, fmt.Errorf("marshalling %s request: %s", reqType, err)
-    }
-	req := types.Request{Data : jData, Type : reqType, ID : uuid.NewString()}
-    
-    
-    if err := client.Conn.WriteJSON(req); err != nil {
-        return nil, fmt.Errorf("sending %s request: %s", req, err)
-    }
-    return &req.ID, nil
+		return nil, fmt.Errorf("marshalling %s request: %s", reqType, err)
+	}
+	req := types.Request{Data: jData, Type: reqType, ID: uuid.NewString()}
+
+	if err := client.Conn.WriteJSON(req); err != nil {
+		return nil, fmt.Errorf("sending %s request: %s", req, err)
+	}
+	return &req.ID, nil
 }
 
 func (client *Cli) Receive() (*ctypes.ServerMessage, error) {

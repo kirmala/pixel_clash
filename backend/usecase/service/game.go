@@ -13,6 +13,7 @@ import (
 )
 
 type Game struct {
+	Colors    []string
 	ShortRepo srepository.Game
 }
 
@@ -22,70 +23,87 @@ func NewGame(shortGameRepo srepository.Game) *Game {
 	}
 }
 
-func (g *Game) Find(player model.Player) string {
-	game, err := g.ShortRepo.Find(player)
+func (g *Game) Find(player model.Player) (string, string) {
+	var game model.Game
+	var participantID string
+	for {
+		curGame, err := g.ShortRepo.Find(player)
 
-	if err != nil {
-		game = &model.Game{Id: uuid.NewString(), Status: "waiting", Players: make(map[model.Player]struct{}), Type: player.GameType}
-		game.Players[player] = struct{}{}
+		if err != nil {
+			game = model.Game{ID: uuid.NewString(), Status: "waiting", Type: player.GameType}
 
-		game.Field.Data = make([][]ctypes.Cell, game.Type.FieldSize)
-		for i := range game.Field.Data {
-			game.Field.Data[i] = make([]ctypes.Cell, game.Type.FieldSize)
-			for j := range game.Field.Data[i] {
-				game.Field.Data[i][j] = ctypes.Cell{
-					CompSize: 0,
-					Color:    "",
+			game.Players = make(map[model.Player]struct{})
+			game.Participants.Data = make(map[string]ctypes.Participant)
+			game.Field.Data = make([][]ctypes.Cell, game.Type.FieldSize)
+			for i := range game.Field.Data {
+				game.Field.Data[i] = make([]ctypes.Cell, game.Type.FieldSize)
+				for j := range game.Field.Data[i] {
+					game.Field.Data[i][j] = ctypes.Cell{
+						CompSize: 0,
+						ParticipantID:    "",
+					}
 				}
 			}
+			g.ShortRepo.Post(game)
+			player.GameID = game.ID
+			id, err := g.ShortRepo.Add(player)
+			if err == nil {
+				participantID = *id
+				break
+			}
+		} else {
+			game = *curGame
+			player.GameID = game.ID
+			id, err := g.ShortRepo.Add(player)
+			if err == nil {
+				participantID = *id
+				break
+			}
 		}
-		g.ShortRepo.Post(*game)
-	} else {
-		game.Players[player] = struct{}{}
-		g.ShortRepo.Put(*game)
 	}
 
-	go g.broadcast(*game, ctypes.ServerEvent{Type : "waiting_change", Data : ctypes.WaitingChange{Waiting: len(game.Players)}})
+	go g.broadcast(game, ctypes.ServerEvent{Type: "waiting_change", Data: ctypes.WaitingChange{Waiting: len(game.Players)}})
 
-	if game.Type.FieldSize == len(game.Players) {
-		go g.start(*game)
+	if game.Type.Size == len(game.Players) {
+		go g.start(game)
 	}
-
-	return game.Id
+	return game.ID, participantID
 }
 
 func (g *Game) RemovePlayer(player model.Player) error {
-	game, err := g.ShortRepo.Get(player.GameId)
-
+	game, err := g.ShortRepo.Get(player.GameID)
+	if err != nil {
+		return fmt.Errorf("removing player from game search: %s", err)
+	}
+	err = g.ShortRepo.Remove(player)
 	if err != nil {
 		return fmt.Errorf("removing player from game search: %s", err)
 	}
 
-	delete(game.Players, player)
-	if err := g.ShortRepo.Put(*game); err != nil {
-		return fmt.Errorf("removing player from game search: %s", err)
-	}
-
-	go g.broadcast(*game, ctypes.ServerEvent{Type : "waiting change", Data : ctypes.WaitingChange{Waiting: len(game.Players)}})
+	go g.broadcast(*game, ctypes.ServerEvent{Type: "waiting change", Data: ctypes.WaitingChange{Waiting: len(game.Players)}})
 	return nil
 }
 
 func (g *Game) manageTimer(game model.Game) {
-	defer game.Timer.Stop()
 	<-game.Timer.C
 
 	if err := g.finish(game); err != nil {
 		log.Printf("%s\n", err)
+	} else {
+		log.Printf("%s\n", "game finished")
 	}
 }
 
 func (g *Game) finish(game model.Game) error {
-	sGame, err := g.ShortRepo.Get(game.Id)
+	sGame, err := g.ShortRepo.Get(game.ID)
 	if err != nil {
 		return fmt.Errorf("error finishing game: %s", err)
 	}
-	g.broadcast(*sGame, ctypes.ServerEvent{Type: "game_finished", Data: ctypes.GameFinish{Scores: game.Scores}})
-	g.ShortRepo.Delete(game)
+	g.broadcast(*sGame, ctypes.ServerEvent{Type: "game_finish", Data: ctypes.GameFinish{Participants: game.Participants}})
+	err = g.ShortRepo.Delete(game)
+	if err != nil {
+		return fmt.Errorf("error finishing game: %s", err)
+	}
 	return nil
 }
 
@@ -93,13 +111,15 @@ func (g *Game) start(game model.Game) {
 	game.Status = "started"
 	game.Timer = *time.NewTimer(time.Second * time.Duration(game.Type.Time))
 	go g.manageTimer(game)
-	g.ShortRepo.Put(game)
-	go g.broadcast(game, ctypes.ServerEvent{Type: "game_found"})
+	if err := g.ShortRepo.Put(game); err != nil{
+		log.Printf("starting game: %s", err)
+	}
+	go g.broadcast(game, ctypes.ServerEvent{Type: "game_start", Data: ctypes.GameStart{Participants: game.Participants, Field: game.Field}})
 }
 
-func (g *Game) Move(player *model.Player, x, y int) error {
-	game, err := g.ShortRepo.Get(player.GameId)
-	if time.Now().Before(player.LastMove.Add(time.Duration(game.Type.Cooldown))) {
+func (g *Game) Move(player *model.Player, y, x int) error {
+	game, err := g.ShortRepo.Get(player.GameID)
+	if time.Now().Before(player.LastMove.Add(time.Duration(game.Type.Cooldown)*time.Second)) {
 		return fmt.Errorf("making a move: you are on a cooldown")
 	}
 	if err != nil {
@@ -111,7 +131,7 @@ func (g *Game) Move(player *model.Player, x, y int) error {
 	if (y >= game.Type.FieldSize || y < 0) || (x >= game.Type.FieldSize || x < 0) {
 		return usecase.ErrorWrongMoveCoordinates
 	}
-	game.Field.Data[y][x].Color = player.Id
+	game.Field.Data[y][x].ParticipantID = player.ParticipantID
 
 	rows, cols := len(game.Field.Data), len(game.Field.Data[0])
 	visited := make([][]bool, rows)
@@ -133,7 +153,7 @@ func (g *Game) Move(player *model.Player, x, y int) error {
 		for _, dir := range directions {
 			ni, nj := cell[0]+dir[0], cell[1]+dir[1]
 			if ni >= 0 && ni < rows && nj >= 0 && nj < cols &&
-				game.Field.Data[ni][nj].Color != "" && !visited[ni][nj] {
+				game.Field.Data[ni][nj].ParticipantID != "" && !visited[ni][nj] {
 				visited[ni][nj] = true
 				queue = append(queue, [2]int{ni, nj})
 			}
@@ -149,9 +169,19 @@ func (g *Game) Move(player *model.Player, x, y int) error {
 			game.Field.Data[cell[0]][cell[1]] = ctypes.Cell{}
 		}
 	}
+	for i, participant := range game.Participants.Data {
+		participant.Score = 0
+		game.Participants.Data[i] = participant
+	}
 	for i := range rows {
 		for j := range cols {
-			game.Scores.Data[game.Field.Data[i][j].Color]++
+			id := game.Field.Data[i][j].ParticipantID
+			if (id == "") {
+				continue
+			}
+			participant := game.Participants.Data[id]
+			participant.Score++
+			game.Participants.Data[id] = participant
 		}
 	}
 	if err := g.ShortRepo.Put(*game); err != nil {
@@ -160,7 +190,7 @@ func (g *Game) Move(player *model.Player, x, y int) error {
 
 	player.LastMove = time.Now()
 
-	go g.broadcast(*game, ctypes.ServerEvent{Type: "player_move", Data: ctypes.PlayerMove{Field: game.Field, Scores: game.Scores}})
+	go g.broadcast(*game, ctypes.ServerEvent{Type: "player_move", Data: ctypes.PlayerMove{Field: game.Field, Participants: game.Participants}})
 
 	return nil
 }

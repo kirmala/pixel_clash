@@ -9,13 +9,14 @@ import (
 )
 
 type Player struct {
-	Id         string
-	UserId     string
+	ID         string
+	UserID     string
 	Nickname   string
 	GameType   ctypes.Game
-	GameId     string
+	GameID     string
 	Conn *websocket.Conn
 	Lock *sync.Mutex
 	Send chan ctypes.ServerEvent
 	LastMove time.Time
+	ParticipantID string
 }

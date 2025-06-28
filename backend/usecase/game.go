@@ -5,7 +5,7 @@ import (
 )
 
 type Game interface {
-	Find(player model.Player) string
-	Move(player *model.Player, x, y int) error
+	Find(player model.Player) (string, string)
+	Move(player *model.Player, y, x int) error
 	RemovePlayer(player model.Player) error
 }

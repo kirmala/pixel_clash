@@ -51,7 +51,7 @@ const docTemplate = `{
                 "summary": "sends status info",
                 "parameters": [
                     {
-                        "description": "user id",
+                        "description": "user ID",
                         "name": "name",
                         "in": "body",
                         "required": true,
@@ -79,7 +79,7 @@ const docTemplate = `{
         "types.PostPlayerStatusHandlerRequest": {
             "type": "object",
             "properties": {
-                "id": {
+                "ID": {
                     "type": "string"
                 }
             }

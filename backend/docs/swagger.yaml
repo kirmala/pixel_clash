@@ -9,7 +9,7 @@ definitions:
     type: object
   types.PostPlayerStatusHandlerRequest:
     properties:
-      id:
+      ID:
         type: string
     type: object
 host: localhost:8080
@@ -41,7 +41,7 @@ paths:
       - application/json
       description: sends status info
       parameters:
-      - description: user id
+      - description: user ID
         in: body
         name: name
         required: true
