@@ -50,7 +50,6 @@ export default class WebSocketService {
             });
             this.app.ws.disconnect()
             this.app.ColorService.reset()
-            this.app.router.navigate('home')
             clearInterval(this.app.gameService);
         };
 

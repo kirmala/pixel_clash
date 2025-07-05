@@ -62,10 +62,12 @@ export default class GameService {
         try {
             const response = await this.app.ws.stopSearching();
             if (response.status === "error") {
-                if (response.data === "Connection canceled") {
+                if (response.data === "Connection closed") {
                     this.app.router.navigate("home")
                 }
                 console.error("Stop searching failed:", response.data);
+            } else {
+                this.app.router.navigate("home")
             }
         } catch (error) {
             console.error("Stop searching error:", error);
